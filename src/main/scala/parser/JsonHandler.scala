@@ -1,5 +1,0 @@
-package parser
-
-trait JsonHandler {
-  
-}
