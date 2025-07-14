@@ -19,9 +19,9 @@ def parseArgs(list: List[String]): Map[String, String] = list match {
   case Nil => Map()
   case _   => throw new IllegalArgumentException("Invalid arguments")
 }
-val locationsPattern = "[--locations | --l <location-path>]"
-val regionPattern = "[--locations | --l <location-path>]"
-val outputPattern = "[--locations | --l <location-path>]"
+val locationsPattern = "[[--locations | --l] <location-path>]"
+val regionPattern = "[[--regions | --r] <region-path>]"
+val outputPattern = "[[--output | --o] <output-path>]"
 val usage = s"""
   Usage: $locationsPattern $regionPattern $outputPattern
 """
