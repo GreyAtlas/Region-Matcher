@@ -1,6 +1,6 @@
 package modules.json
 
-import io.circe._, io.circe.generic.auto._, io.circe.parser._, io.circe.syntax._
+import io.circe._, io.circe.parser._, io.circe.syntax._
 import types.Point
 import types.Location
 import types.Polygon
@@ -16,16 +16,18 @@ object CirceJsonParser {
 
   def parseLocationJson(
       locationsJsonFile: String
-  ): Either[String, List[Location]] =
+  ): Either[java.lang.Error, List[Location]] =
     parser.decode[List[Location]](locationsJsonFile) match {
       case Right(locations) => Right(locations)
-      case Left(error)      => Left(error.getMessage())
+      case Left(error)      => Left(java.lang.Error(error.getMessage()))
     }
 
-  def parseRegionJson(regionsJsonFile: String): Either[String, List[Region]] =
+  def parseRegionJson(
+      regionsJsonFile: String
+  ): Either[java.lang.Error, List[Region]] =
     parser.decode[List[Region]](regionsJsonFile) match {
       case Right(regions) => Right(regions)
-      case Left(error)    => Left(error.getMessage())
+      case Left(error)    => Left(java.lang.Error(error.getMessage()))
     }
 
   implicit val locationMatchResultEncoder: Encoder[LocationMatchResult] =
