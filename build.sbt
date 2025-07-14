@@ -6,6 +6,8 @@ lazy val root = project
     name := "scala-main-task",
     version := "0.1.0-SNAPSHOT",
     scalaVersion := scala3Version,
+    assembly / mainClass := Some("com.regionmatcher.Main"),
+    assembly / test := (Test / test).value,
     libraryDependencies ++= Seq(
       "org.scalameta" %% "munit" % "1.0.0" % Test,
       "org.scala-lang" %% "toolkit" % "0.7.0",
