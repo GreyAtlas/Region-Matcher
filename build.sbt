@@ -16,7 +16,7 @@ lazy val root = project
     semanticdbEnabled := true,
     scalafixOnCompile := true,
     semanticdbVersion := scalafixSemanticdb.revision,
-    // assembly / mainClass := Some("Main"),
+    assembly / mainClass := Some("Main"),
     assembly / test := (Test / test).value,
     libraryDependencies ++= Seq(
       "org.scalameta" %% "munit" % "1.0.0" % Test,

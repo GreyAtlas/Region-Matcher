@@ -1,5 +1,5 @@
 package modules.solvers
-// For more information on writing tests, see
+
 import modules.solvers.RayCast2DSolver
 import types.Latitude
 import types.Location

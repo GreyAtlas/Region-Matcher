@@ -1,7 +1,6 @@
 package modules.json
 
 import io.circe.*
-import io.circe.parser.*
 import io.circe.syntax.*
 import types.Latitude
 import types.Location
