@@ -1,13 +1,13 @@
 package modules.solvers
 // For more information on writing tests, see
-import types.LocationMatchResult
-import types.Region
-import types.Polygon
-import types.Point
-import types.Longitude
-import types.Latitude
 import modules.solvers.RayCast2DSolver
+import types.Latitude
 import types.Location
+import types.LocationMatchResult
+import types.Longitude
+import types.Point
+import types.Polygon
+import types.Region
 
 class RayCastSolverSuite extends munit.FunSuite {
 

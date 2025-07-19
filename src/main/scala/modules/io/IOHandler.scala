@@ -1,16 +1,13 @@
 package modules.IO
 
-import os.Path
-import types.LocationMatchResult
-
 object IOHandler {
   def readFileIntoMemory(path: String): String =
     os.read(os.pwd / os.RelPath(path))
 
-  def writeToFile(path: String, results: String) =
+  def writeToFile(path: String, results: String): Unit =
     os.write(os.pwd / os.RelPath(path), results)
 
-  def writeToConsole(contentsToWrite: String) =
+  def writeToConsole(contentsToWrite: String): Unit =
     println(contentsToWrite)
 
   def parseArgs(list: List[String]): Map[String, String] = list match {
@@ -19,5 +16,5 @@ object IOHandler {
     case Nil => Map()
     case _   => throw new IllegalArgumentException("Invalid arguments")
   }
-  
+
 }

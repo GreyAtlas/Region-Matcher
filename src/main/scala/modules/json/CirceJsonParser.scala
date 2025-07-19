@@ -1,13 +1,15 @@
 package modules.json
 
-import io.circe._, io.circe.parser._, io.circe.syntax._
-import types.Point
+import io.circe.*
+import io.circe.parser.*
+import io.circe.syntax.*
+import types.Latitude
 import types.Location
+import types.LocationMatchResult
+import types.Longitude
+import types.Point
 import types.Polygon
 import types.Region
-import types.Longitude
-import types.Latitude
-import types.LocationMatchResult
 
 object CirceJsonParser {
 
