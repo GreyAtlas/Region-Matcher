@@ -48,7 +48,7 @@ object CirceJsonParser {
             for {
               longitudeResult <- Longitude(longitude).toRight(
                 DecodingFailure(
-                  s"longitude must be a float between 0 and 360, found=$longitude",
+                  s"longitude must be a float between -180 and 180, found=$longitude",
                   hCursor.history
                 )
               )

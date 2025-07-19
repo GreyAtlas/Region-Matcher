@@ -5,12 +5,6 @@ import types.Location
 import types.LocationMatchResult
 import types.Region
 
-def parseArgs(list: List[String]): Map[String, String] = list match {
-  case key :: value :: tail if key.startsWith("--") =>
-    parseArgs(tail) + (key.drop(2) -> value)
-  case Nil => Map()
-  case _   => throw new IllegalArgumentException("Invalid arguments")
-}
 val locationsPattern = "[[--locations | --l] <location-path>]"
 val regionPattern = "[[--regions | --r] <region-path>]"
 val outputPattern = "[[--output | --o] <output-path>]"
