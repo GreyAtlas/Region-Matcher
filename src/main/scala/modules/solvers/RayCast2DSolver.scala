@@ -1,15 +1,13 @@
 package modules.solvers
 
-import types.Location
-
-import types.LocationMatchResult
-
-import types.Region
-import types.Point
-import types.Longitude
-import types.Latitude
 import types.Line
+import types.Location
+import types.LocationMatchResult
+import types.Longitude
+import types.Point
 import types.Polygon
+import types.Region
+
 import scala.math
 
 // An implementation of the ray cast point in polygon algorithm
@@ -68,7 +66,7 @@ object RayCast2DSolver extends Solver {
       testPoint.longitude.value,
       edgeStart.longitude.value,
       edgeEnd.longitude.value
-    ).filter(_ >= 0).minOption).getOrElse(0.0f) 
+    ).filter(_ >= 0).minOption).getOrElse(0.0f)
     (
       shiftFunction(testPoint, minPositiveLongitude),
       Line(
@@ -96,7 +94,7 @@ object RayCast2DSolver extends Solver {
       case true       => isIntersectionToTheRightOfPoint(testPoint, edge)
       case _: Boolean => false;
     }
-  
+
   private def isIntersectionToTheRightOfPoint(
       testPoint: Point,
       edge: Line

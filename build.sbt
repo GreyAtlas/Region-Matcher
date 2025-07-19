@@ -6,7 +6,17 @@ lazy val root = project
     name := "region-matcher",
     version := "1.0",
     scalaVersion := scala3Version,
-    assembly / mainClass := Some("com.regionmatcher.Main"),
+    scalacOptions ++= Seq(
+      "-unchecked",
+      "-deprecation",
+      // "-Werror",
+      "-Xlint",
+      "-Wunused:imports"
+    ),
+    semanticdbEnabled := true,
+    scalafixOnCompile := true,
+    semanticdbVersion := scalafixSemanticdb.revision,
+    assembly / mainClass := Some("Main"),
     assembly / test := (Test / test).value,
     libraryDependencies ++= Seq(
       "org.scalameta" %% "munit" % "1.0.0" % Test,

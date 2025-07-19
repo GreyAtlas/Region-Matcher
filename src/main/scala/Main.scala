@@ -1,24 +1,10 @@
-package com.regionmatcher
-
-import types.Latitude
-import types.Longitude
-import types.Point
-import types.Polygon
-
-import types.Location
-import types.Region
-import modules.solvers.RayCast2DSolver
-import types.Line
 import modules.IO.IOHandler
 import modules.json.CirceJsonParser
+import modules.solvers.RayCast2DSolver
+import types.Location
 import types.LocationMatchResult
+import types.Region
 
-def parseArgs(list: List[String]): Map[String, String] = list match {
-  case key :: value :: tail if key.startsWith("--") =>
-    parseArgs(tail) + (key.drop(2) -> value)
-  case Nil => Map()
-  case _   => throw new IllegalArgumentException("Invalid arguments")
-}
 val locationsPattern = "[[--locations | --l] <location-path>]"
 val regionPattern = "[[--regions | --r] <region-path>]"
 val outputPattern = "[[--output | --o] <output-path>]"

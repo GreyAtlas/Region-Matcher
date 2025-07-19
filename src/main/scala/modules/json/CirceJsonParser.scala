@@ -1,13 +1,14 @@
 package modules.json
 
-import io.circe._, io.circe.parser._, io.circe.syntax._
-import types.Point
+import io.circe.*
+import io.circe.syntax.*
+import types.Latitude
 import types.Location
+import types.LocationMatchResult
+import types.Longitude
+import types.Point
 import types.Polygon
 import types.Region
-import types.Longitude
-import types.Latitude
-import types.LocationMatchResult
 
 object CirceJsonParser {
 
@@ -46,7 +47,7 @@ object CirceJsonParser {
             for {
               longitudeResult <- Longitude(longitude).toRight(
                 DecodingFailure(
-                  s"longitude must be a float between 0 and 360, found=$longitude",
+                  s"longitude must be a float between -180 and 180, found=$longitude",
                   hCursor.history
                 )
               )

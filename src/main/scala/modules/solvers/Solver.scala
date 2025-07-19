@@ -1,8 +1,8 @@
 package modules.solvers
 
 import types.Location
-import types.Region
 import types.LocationMatchResult
+import types.Region
 
 trait Solver {
   def matchRegionsToLocations(
