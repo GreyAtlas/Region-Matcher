@@ -14,11 +14,11 @@ Additionally the current implementation is not able to evaluate holes in polygon
 1. ### SBT
 
     The simplest option is to just run it with sbt 
-    ```sbt "run [[--locations | --l <location-path>]] [[--regions | --r <region-path>]] [[--output | --o <output-path>]]" ```
+    ```sbt "run [[--locations | -l <location-path>]] [[--regions | -r <region-path>]] [[--output | -o <output-path>]]" ```
    
 3. ### Assembly .Jar
     the sbt-assembly plugin is configured, as such you can run ```sbt assembly``` to create a single .jar file with all dependencies. it can then be either with the java interpreter. 
-    ```java -jar <application-name> [[--locations | --l <location-path>]] [[--regions | --r <region-path>]] [[--output | --o <output-path>]]```
+    ```java -jar <application-name> [[--locations | -l <location-path>]] [[--regions | -r <region-path>]] [[--output | -o <output-path>]]```
 
 
 ### File format
