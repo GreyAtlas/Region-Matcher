@@ -19,7 +19,7 @@ lazy val root = project
     scalafixOnCompile := true,
     semanticdbVersion := scalafixSemanticdb.revision,
     Compile / run / fork := true,
-    assembly / mainClass := Some("RegionMatcherApp"),
+    assembly / mainClass := Some("Main"),
     assembly / test := (Test / test).value,
     libraryDependencies ++= Seq(
       "org.scalameta" %% "munit" % "1.0.0" % Test,

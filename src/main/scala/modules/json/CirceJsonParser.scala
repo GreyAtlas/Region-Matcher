@@ -1,6 +1,5 @@
 package modules.json
 
-import cats.effect.IO
 import io.circe.*
 import io.circe.syntax.*
 import types.Latitude
@@ -15,26 +14,26 @@ object CirceJsonParser {
 
   def encodeResultsToJson(
       content: List[LocationMatchResult]
-  ): IO[Either[String, String]] =
+  ): Either[String, String] =
     content match {
-      case head :: next => IO(Right(content.asJson.toString))
-      case Nil          => IO(Left(s"Region matching result list is empty"))
+      case head :: next => Right(content.asJson.toString)
+      case Nil          => Left(s"Region matching result list is empty")
     }
 
   def parseLocationJson(
       locationsJsonFile: String
-  ): IO[Either[String, List[Location]]] =
+  ): Either[String, List[Location]] =
     parser.decode[List[Location]](locationsJsonFile) match {
-      case Right(locations) => IO(Right(locations))
-      case Left(error)      => IO(Left(s"Error while parsing JSON: ${error}"))
+      case Right(locations) => Right(locations)
+      case Left(error)      => Left(s"Error while parsing JSON: ${error}")
     }
 
   def parseRegionJson(
       regionsJsonFile: String
-  ): IO[Either[String, List[Region]]] =
+  ): Either[String, List[Region]] =
     parser.decode[List[Region]](regionsJsonFile) match {
-      case Right(regions) => IO(Right(regions))
-      case Left(error)    => IO(Left(s"Error while parsing JSON: ${error}"))
+      case Right(regions) => Right(regions)
+      case Left(error)    => Left(s"Error while parsing JSON: ${error}")
     }
 
   implicit val locationMatchResultEncoder: Encoder[LocationMatchResult] =
