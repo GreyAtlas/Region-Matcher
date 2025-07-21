@@ -51,7 +51,7 @@ Additionally the current implementation is not able to evaluate holes in polygon
   ```
   [
     {
-      "name": "<unique identifier>",
+      "region": "<unique identifier>",
       "matched_locations": [<location identifier>,
         ... // more location identifiers
       ]
