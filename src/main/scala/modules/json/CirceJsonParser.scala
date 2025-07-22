@@ -12,23 +12,28 @@ import types.Region
 
 object CirceJsonParser {
 
-  def encodeResultsToJson(content: List[LocationMatchResult]): String =
-    content.asJson.toString
+  def encodeResultsToJson(
+      content: List[LocationMatchResult]
+  ): Either[String, String] =
+    content match {
+      case head :: next => Right(content.asJson.toString)
+      case Nil          => Left(s"Region matching result list is empty")
+    }
 
   def parseLocationJson(
       locationsJsonFile: String
-  ): Either[java.lang.Error, List[Location]] =
+  ): Either[String, List[Location]] =
     parser.decode[List[Location]](locationsJsonFile) match {
       case Right(locations) => Right(locations)
-      case Left(error)      => Left(java.lang.Error(error.getMessage()))
+      case Left(error)      => Left(s"Error while parsing JSON: ${error}")
     }
 
   def parseRegionJson(
       regionsJsonFile: String
-  ): Either[java.lang.Error, List[Region]] =
+  ): Either[String, List[Region]] =
     parser.decode[List[Region]](regionsJsonFile) match {
       case Right(regions) => Right(regions)
-      case Left(error)    => Left(java.lang.Error(error.getMessage()))
+      case Left(error)    => Left(s"Error while parsing JSON: ${error}")
     }
 
   implicit val locationMatchResultEncoder: Encoder[LocationMatchResult] =

@@ -1,76 +1,84 @@
+import cats.data.EitherT
+import cats.effect.*
+import cats.syntax.all.*
+import com.monovore.decline.*
+import com.monovore.decline.effect.*
 import modules.IO.IOHandler
 import modules.json.CirceJsonParser
 import modules.solvers.RayCast2DSolver
-import types.Location
-import types.LocationMatchResult
-import types.Region
 
-val locationsPattern = "[[--locations | --l] <location-path>]"
-val regionPattern = "[[--regions | --r] <region-path>]"
-val outputPattern = "[[--output | --o] <output-path>]"
-val usage = s"""
-  Usage: $locationsPattern $regionPattern $outputPattern
-"""
+case class MatcherConfig(
+    locationsPath: String,
+    regionsPath: String,
+    outputPath: String
+)
 
-def handleError(error: Error): Nothing = sys.exit(1);
+object Main
+    extends CommandIOApp(
+      name = "region matcher",
+      header =
+        "This application matches the provided locations to the regions they are located in",
+      version = "1.0.0"
+    ) {
+  val locationsPathOpt = Opts
+    .option[String](
+      "locations",
+      short = "l",
+      metavar = "path",
+      help = "Set the locations.json path"
+    )
+  val regionsPathOpt = Opts
+    .option[String](
+      "regions",
+      short = "r",
+      metavar = "path",
+      help = "Set the locations.json path"
+    )
+  val outputPathOpt = Opts
+    .option[String](
+      "output",
+      short = "o",
+      metavar = "path",
+      help = "Set the output.json path"
+    )
+  val configOpts: Opts[MatcherConfig] =
+    (locationsPathOpt, regionsPathOpt, outputPathOpt).mapN(MatcherConfig.apply)
 
-@main def Main(args: String*): Unit =
-  if (args.isEmpty) {
-    println(usage)
-    sys.exit(1)
-  }
+  override def main: Opts[IO[ExitCode]] =
+    (locationsPathOpt, regionsPathOpt, outputPathOpt)
+      .mapN { (locationsPath, regionsPath, outputPath) =>
+        runApp(MatcherConfig(locationsPath, regionsPath, outputPath)).value
+          .flatMap({
 
-  val argMap = Map.newBuilder[String, String]
-  args.sliding(2, 2).toList.collect {
-    case Seq("--locations" | "--l", locations: String) =>
-      argMap.+=("locationsPath" -> locations)
-    case Seq("--regions" | "--r", regions: String) =>
-      argMap.+=("regionsPath" -> regions)
-    case Seq("--output" | "--o", output: String) =>
-      argMap.+=("outputPath" -> output)
-  }
-  val locationsArg: Option[String] = argMap.result().get("locationsPath")
-  val regionsArg: Option[String] = argMap.result().get("regionsPath")
-  val outputArg: Option[String] = argMap.result().get("outputPath")
+            case Right(value) => IO.println(value).as(ExitCode.Success)
+            case Left(value)  => IO.println(value).as(ExitCode.Error)
+          })
+      }
 
-  val locationsJson: Either[Error, String] = locationsArg match {
-    case Some(locations) => Right(IOHandler.readFileIntoMemory(locations))
-    case None => Left(Error(s"locations file path required. $locationsPattern"))
-  }
-
-  if locationsJson.isLeft then handleError(locationsJson.left.get)
-
-  val regionsJson: Either[Error, String] = regionsArg match {
-    case Some(regions) => Right(IOHandler.readFileIntoMemory(regions))
-    case None => Left(Error(s"regions file path required. $regionPattern"))
-  }
-  if regionsJson.isLeft then handleError(regionsJson.left.get)
-
-  val locationParseResult =
-    CirceJsonParser.parseLocationJson(locationsJson.right.get)
-
-  val regionParseResult =
-    CirceJsonParser.parseRegionJson(regionsJson.right.get)
-
-  val solverResult = (locationParseResult, regionParseResult) match {
-    case (Right(locations: List[Location]), Right(regions: List[Region])) =>
-      Right(RayCast2DSolver.matchRegionsToLocations(regions, locations))
-    case (Left(locationError), _) => Left(locationError)
-    case (_, Left(regionError))   => Left(regionError)
-  }
-
-  val outputPath: Either[Error, String] = outputArg match {
-    case Some(outputPath) => Right(outputPath)
-    case None => Left(Error(s"output file path required. $outputPattern"))
-  }
-  if outputPath.isLeft then handleError(outputPath.left.get)
-
-  solverResult match {
-    case Right(results: List[LocationMatchResult]) =>
-      IOHandler.writeToFile(
-        outputPath.right.get,
-        CirceJsonParser.encodeResultsToJson(results)
+  def runApp(
+      config: MatcherConfig
+  ): EitherT[IO, String, String] = {
+    for {
+      locationsFile <- EitherT(
+        IOHandler.readFileIntoMemory(config.locationsPath)
       )
-    case Left(error) => handleError(error)
+      locations <- EitherT.fromEither(
+        CirceJsonParser.parseLocationJson(locationsFile)
+      )
+      regionsFile <- EitherT(IOHandler.readFileIntoMemory(config.regionsPath))
+      regions <- EitherT.fromEither(
+        CirceJsonParser.parseRegionJson(regionsFile)
+      )
+      solverResult =
+        RayCast2DSolver.matchRegionsToLocations(
+          regions,
+          locations
+        )
+      resultJson <- EitherT.fromEither(
+        CirceJsonParser.encodeResultsToJson(solverResult)
+      )
+      output <- EitherT(IOHandler.writeToFile(config.outputPath, resultJson))
+    } yield output
+
   }
-  IOHandler.writeToConsole(s"Results written to ${outputPath.right.get}")
+}
