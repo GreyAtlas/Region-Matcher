@@ -1,6 +1,7 @@
 package modules.json
 
 import io.circe.*
+import io.circe.generic.auto.*
 import io.circe.syntax.*
 import types.Latitude
 import types.Location
@@ -25,7 +26,7 @@ object CirceJsonParser {
   ): Either[String, List[Location]] =
     parser.decode[List[Location]](locationsJsonFile) match {
       case Right(locations) => Right(locations)
-      case Left(error)      => Left(s"Error while parsing JSON: ${error}")
+      case Left(error) => Left(s"Error while parsing Locations JSON: ${error}")
     }
 
   def parseRegionJson(
@@ -33,7 +34,7 @@ object CirceJsonParser {
   ): Either[String, List[Region]] =
     parser.decode[List[Region]](regionsJsonFile) match {
       case Right(regions) => Right(regions)
-      case Left(error)    => Left(s"Error while parsing JSON: ${error}")
+      case Left(error)    => Left(s"Error while parsing Regions JSON: ${error}")
     }
 
   implicit val locationMatchResultEncoder: Encoder[LocationMatchResult] =
@@ -76,17 +77,6 @@ object CirceJsonParser {
       } yield res
     }
 
-  implicit val locationDecoder: Decoder[Location] =
-    (hCursor: HCursor) => {
-      for {
-        name <- hCursor.get[String]("name")
-        point <- hCursor.downField("coordinates").as[Point]
-      } yield Location(
-        name,
-        point
-      )
-    }
-
   implicit val polygonDecoder: Decoder[Polygon] =
     (hCursor: HCursor) => {
       for {
@@ -101,14 +91,4 @@ object CirceJsonParser {
       } yield polygonResult
     }
 
-  implicit val regionDecoder: Decoder[Region] =
-    (hCursor: HCursor) => {
-      for {
-        name <- hCursor.get[String]("name")
-        polygon <- hCursor.downField("coordinates").as[Vector[Polygon]]
-      } yield Region(
-        name,
-        polygon
-      )
-    }
 }
