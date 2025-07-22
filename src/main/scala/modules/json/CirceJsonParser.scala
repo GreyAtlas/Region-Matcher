@@ -1,5 +1,6 @@
 package modules.json
 
+import cats.syntax.all.*
 import io.circe.*
 import io.circe.generic.auto.*
 import io.circe.syntax.*
@@ -44,37 +45,45 @@ object CirceJsonParser {
         ("matched_locations", result.matchedLocationNames.asJson)
       )
     }
+
+  implicit val longitudeDecoder: Decoder[Longitude] =
+    (hCursor: HCursor) => {
+      hCursor.as[Float].flatMap { case longitude =>
+        Longitude(longitude).toRight(
+          DecodingFailure(
+            s"longitude must be a float between -180 and 180, found=${longitude}",
+            hCursor.history
+          )
+        )
+      }
+    }
+
+  implicit val latitudeDecoder: Decoder[Latitude] =
+    (hCursor: HCursor) => {
+      hCursor.as[Float].flatMap { case latitude =>
+        Latitude(latitude).toRight(
+          DecodingFailure(
+            s"longitude must be a float between -90 and 90, found=${latitude}",
+            hCursor.history
+          )
+        )
+      }
+    }
+
   implicit val pointDecoder: Decoder[Point] =
     (hCursor: HCursor) => {
-      for {
-        arr <- hCursor.as[Vector[Float]]
-        res <- arr match {
-          case Vector(longitude, latitude) =>
-            for {
-              longitudeResult <- Longitude(longitude).toRight(
-                DecodingFailure(
-                  s"longitude must be a float between -180 and 180, found=$longitude",
-                  hCursor.history
-                )
-              )
-              latitudeResult <- Latitude(latitude).toRight(
-                DecodingFailure(
-                  s"latitude must be a float between -90 and 90, found=$latitude",
-                  hCursor.history
-                )
-              )
-            } yield Point(longitudeResult, latitudeResult)
-
-          case _ =>
-            Left(
-              DecodingFailure(
-                "Expected JSON array of exactly two floats",
-                hCursor.history
-              )
-            )
-
+      hCursor
+        .as[(Longitude, Latitude)]
+        .flatMap { case (longitude, latitude) =>
+          Right(Point(longitude, latitude))
         }
-      } yield res
+        .leftMap(error =>
+          DecodingFailure(
+            s"Expected JSON array of exactly two floats found =  ${hCursor.value.noSpaces}",
+            hCursor.history
+          )
+        )
+
     }
 
   implicit val polygonDecoder: Decoder[Polygon] =
