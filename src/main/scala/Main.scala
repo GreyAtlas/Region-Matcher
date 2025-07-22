@@ -49,7 +49,6 @@ object Main
       .mapN { (locationsPath, regionsPath, outputPath) =>
         runApp(MatcherConfig(locationsPath, regionsPath, outputPath)).value
           .flatMap({
-
             case Right(value) => IO.println(value).as(ExitCode.Success)
             case Left(value)  => IO.println(value).as(ExitCode.Error)
           })
@@ -59,13 +58,15 @@ object Main
       config: MatcherConfig
   ): EitherT[IO, String, String] = {
     for {
-      locationsFile <- EitherT(
+      locationsFile <- EitherT.liftF(
         IOHandler.readFileIntoMemory(config.locationsPath)
       )
       locations <- EitherT.fromEither(
         CirceJsonParser.parseLocationJson(locationsFile)
       )
-      regionsFile <- EitherT(IOHandler.readFileIntoMemory(config.regionsPath))
+      regionsFile <- EitherT.liftF(
+        IOHandler.readFileIntoMemory(config.regionsPath)
+      )
       regions <- EitherT.fromEither(
         CirceJsonParser.parseRegionJson(regionsFile)
       )
@@ -77,7 +78,9 @@ object Main
       resultJson <- EitherT.fromEither(
         CirceJsonParser.encodeResultsToJson(solverResult)
       )
-      output <- EitherT(IOHandler.writeToFile(config.outputPath, resultJson))
+      output <- EitherT.liftF(
+        IOHandler.writeToFile(config.outputPath, resultJson)
+      )
     } yield output
 
   }
