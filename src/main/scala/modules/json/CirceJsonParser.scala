@@ -1,6 +1,8 @@
 package modules.json
 
+import cats.syntax.all.*
 import io.circe.*
+import io.circe.generic.auto.*
 import io.circe.syntax.*
 import types.Latitude
 import types.Location
@@ -25,7 +27,7 @@ object CirceJsonParser {
   ): Either[String, List[Location]] =
     parser.decode[List[Location]](locationsJsonFile) match {
       case Right(locations) => Right(locations)
-      case Left(error)      => Left(s"Error while parsing JSON: ${error}")
+      case Left(error) => Left(s"Error while parsing Locations JSON: ${error}")
     }
 
   def parseRegionJson(
@@ -33,7 +35,7 @@ object CirceJsonParser {
   ): Either[String, List[Region]] =
     parser.decode[List[Region]](regionsJsonFile) match {
       case Right(regions) => Right(regions)
-      case Left(error)    => Left(s"Error while parsing JSON: ${error}")
+      case Left(error)    => Left(s"Error while parsing Regions JSON: ${error}")
     }
 
   implicit val locationMatchResultEncoder: Encoder[LocationMatchResult] =
@@ -43,48 +45,45 @@ object CirceJsonParser {
         ("matched_locations", result.matchedLocationNames.asJson)
       )
     }
-  implicit val pointDecoder: Decoder[Point] =
+
+  implicit val longitudeDecoder: Decoder[Longitude] =
     (hCursor: HCursor) => {
-      for {
-        arr <- hCursor.as[Vector[Float]]
-        res <- arr match {
-          case Vector(longitude, latitude) =>
-            for {
-              longitudeResult <- Longitude(longitude).toRight(
-                DecodingFailure(
-                  s"longitude must be a float between -180 and 180, found=$longitude",
-                  hCursor.history
-                )
-              )
-              latitudeResult <- Latitude(latitude).toRight(
-                DecodingFailure(
-                  s"latitude must be a float between -90 and 90, found=$latitude",
-                  hCursor.history
-                )
-              )
-            } yield Point(longitudeResult, latitudeResult)
-
-          case _ =>
-            Left(
-              DecodingFailure(
-                "Expected JSON array of exactly two floats",
-                hCursor.history
-              )
-            )
-
-        }
-      } yield res
+      hCursor.as[Float].flatMap { case longitude =>
+        Longitude(longitude).toRight(
+          DecodingFailure(
+            s"longitude must be a float between -180 and 180, found=${longitude}",
+            hCursor.history
+          )
+        )
+      }
     }
 
-  implicit val locationDecoder: Decoder[Location] =
+  implicit val latitudeDecoder: Decoder[Latitude] =
     (hCursor: HCursor) => {
-      for {
-        name <- hCursor.get[String]("name")
-        point <- hCursor.downField("coordinates").as[Point]
-      } yield Location(
-        name,
-        point
-      )
+      hCursor.as[Float].flatMap { case latitude =>
+        Latitude(latitude).toRight(
+          DecodingFailure(
+            s"longitude must be a float between -90 and 90, found=${latitude}",
+            hCursor.history
+          )
+        )
+      }
+    }
+
+  implicit val pointDecoder: Decoder[Point] =
+    (hCursor: HCursor) => {
+      hCursor
+        .as[(Longitude, Latitude)]
+        .flatMap { case (longitude, latitude) =>
+          Right(Point(longitude, latitude))
+        }
+        .leftMap(error =>
+          DecodingFailure(
+            s"Expected JSON array of exactly two floats found =  ${hCursor.value.noSpaces}",
+            hCursor.history
+          )
+        )
+
     }
 
   implicit val polygonDecoder: Decoder[Polygon] =
@@ -101,14 +100,4 @@ object CirceJsonParser {
       } yield polygonResult
     }
 
-  implicit val regionDecoder: Decoder[Region] =
-    (hCursor: HCursor) => {
-      for {
-        name <- hCursor.get[String]("name")
-        polygon <- hCursor.downField("coordinates").as[Vector[Polygon]]
-      } yield Region(
-        name,
-        polygon
-      )
-    }
 }

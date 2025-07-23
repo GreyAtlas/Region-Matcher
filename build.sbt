@@ -9,11 +9,9 @@ lazy val root = project
     scalacOptions ++= Seq(
       "-unchecked",
       "-deprecation",
-      // "-Werror",
       "-Xlint",
       "-Wnonunit-statement",
-      "-Wunused:imports",
-      "-explain"
+      "-Wunused:imports"
     ),
     semanticdbEnabled := true,
     scalafixOnCompile := true,
@@ -24,7 +22,6 @@ lazy val root = project
     libraryDependencies ++= Seq(
       "org.scalameta" %% "munit" % "1.0.0" % Test,
       "org.typelevel" %% "munit-cats-effect-3" % "1.0.6" % Test,
-      // "com.lihaoyi" %% "os-lib" % "0.11.3",
       "org.typelevel" %% "cats-core" % "2.13.0",
       "org.typelevel" %% "cats-effect" % "3.6.2",
       "com.monovore" %% "decline" % "2.5.0",

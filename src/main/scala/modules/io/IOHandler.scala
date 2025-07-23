@@ -3,15 +3,15 @@ package modules.IO
 import cats.effect.IO
 
 object IOHandler {
-  def readFileIntoMemory(path: String): IO[Either[String, String]] =
+  def readFileIntoMemory(path: String): IO[String] =
     IO.blocking(
-      Right(os.read(os.pwd / os.RelPath(path)))
-    ).handleError(error => Left(s"Error while reading file: ${error}"))
+      os.read(os.pwd / os.RelPath(path))
+    )
 
-  def writeToFile(path: String, results: String): IO[Either[String, String]] =
+  def writeToFile(path: String, results: String): IO[String] =
     IO.blocking {
       os.write(os.pwd / os.RelPath(path), results)
-      Right(s"Results written to ${os.pwd / os.RelPath(path)}")
-    }.handleError(error => Left(s"Error while writing to file: ${error}"))
+      s"Results were written to ${os.pwd / os.RelPath(path)}"
+    }
 
 }

@@ -27,7 +27,7 @@ object RayCast2DSolver extends Solver {
   ): LocationMatchResult =
     val locationsMatchedToRegion = for {
       location <- locations
-      polygon <- region.polygons
+      polygon <- region.coordinates
       if isPointInPolygon(location.coordinates, polygon)
     } yield {
       location.name
