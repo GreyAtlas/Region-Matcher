@@ -8,5 +8,10 @@ trait Solver {
   def matchRegionsToLocations(
       regions: List[Region],
       locations: List[Location]
-  ): List[LocationMatchResult]
+  ): Either[String, List[LocationMatchResult]]
+
+  def matchLocationsToRegion(
+      locations: List[Location],
+      region: Region
+  ): Either[String, LocationMatchResult]
 }

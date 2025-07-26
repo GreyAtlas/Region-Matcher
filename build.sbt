@@ -29,6 +29,7 @@ lazy val root = project
       "org.scala-lang" %% "toolkit" % "0.7.0",
       "io.circe" %% "circe-core" % "0.14.7",
       "io.circe" %% "circe-generic" % "0.14.7",
-      "io.circe" %% "circe-parser" % "0.14.7"
+      "io.circe" %% "circe-parser" % "0.14.7",
+      "org.locationtech.spatial4j" % "spatial4j" % "0.8"
     )
   )

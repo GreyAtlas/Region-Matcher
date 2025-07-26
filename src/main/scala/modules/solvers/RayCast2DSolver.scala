@@ -15,16 +15,23 @@ import scala.math
 // Thus it will be inaccurate for edges covering long distances.
 // But handles the discontinuity at the antimeridian as long as the polygon doesn't cover more than
 object RayCast2DSolver extends Solver {
-  def matchRegionsToLocations(
+  override def matchRegionsToLocations(
       regions: List[Region],
       locations: List[Location]
-  ): List[LocationMatchResult] =
-    regions.map(region => matchLocationsToRegion(locations, region))
+  ): Either[String, List[LocationMatchResult]] =
+    Right(
+      regions.map(region =>
+        matchLocationsToRegion(locations, region) match {
+          case Right(value: LocationMatchResult) => value
+          case Left(value)                       => ???
+        }
+      )
+    )
 
-  private def matchLocationsToRegion(
+  override def matchLocationsToRegion(
       locations: List[Location],
       region: Region
-  ): LocationMatchResult =
+  ): Either[String, LocationMatchResult] =
     val locationsMatchedToRegion = for {
       location <- locations
       polygon <- region.coordinates
@@ -32,7 +39,7 @@ object RayCast2DSolver extends Solver {
     } yield {
       location.name
     }
-    LocationMatchResult(region.name, locationsMatchedToRegion)
+    Right(LocationMatchResult(region.name, locationsMatchedToRegion))
 
   // For each Edge checks if it intersects a ray cast from the point in the positive longitude direction
   // and XORs the booleans from each edge check.
