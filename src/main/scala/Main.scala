@@ -8,11 +8,11 @@ import modules.IO.IOHandler
 import modules.json.CirceJsonParser
 import modules.solvers.RayCast2DSolver
 
-enum SelectedSolver:
+private enum SelectedSolver:
   case RayCast2D
   case Spatial4j
 
-case class MatcherConfig(
+private case class MatcherConfig(
     locationsPath: String,
     regionsPath: String,
     outputPath: String,

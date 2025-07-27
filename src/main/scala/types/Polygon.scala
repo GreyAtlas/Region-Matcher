@@ -1,7 +1,5 @@
 package types
 
-
-
 final case class Polygon private (vertices: Vector[Point])
 
 object Polygon:

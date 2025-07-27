@@ -22,6 +22,7 @@ lazy val root = project
     libraryDependencies ++= Seq(
       "org.scalameta" %% "munit" % "1.0.0" % Test,
       "org.typelevel" %% "munit-cats-effect-3" % "1.0.6" % Test,
+      "org.scalameta" %% "munit-scalacheck" % "1.1.0" % Test,
       "org.typelevel" %% "cats-core" % "2.13.0",
       "org.typelevel" %% "cats-effect" % "3.6.2",
       "com.monovore" %% "decline" % "2.5.0",
@@ -30,6 +31,7 @@ lazy val root = project
       "io.circe" %% "circe-core" % "0.14.7",
       "io.circe" %% "circe-generic" % "0.14.7",
       "io.circe" %% "circe-parser" % "0.14.7",
-      "org.locationtech.spatial4j" % "spatial4j" % "0.8"
+      "org.locationtech.spatial4j" % "spatial4j" % "0.8",
+      "org.locationtech.jts" % "jts-core" % "1.20.0"
     )
   )

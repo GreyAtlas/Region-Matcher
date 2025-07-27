@@ -26,7 +26,7 @@ object Spatial4jSolver extends Solver {
   override def matchLocationsToRegion(
       locations: List[Location],
       region: Region
-  ): Either[String, LocationMatchResult] =
+  ): Either[String, LocationMatchResult] = {
     val spatial4jMatchResult = for {
       spatial4jLocations <- locations.traverse(location =>
         convertPointToSpatial4JPoint(location.coordinates).map(spatial4jPoint =>
@@ -48,8 +48,8 @@ object Spatial4jSolver extends Solver {
         )
       case Right(value) => Right(LocationMatchResult(region.name, value))
     }
-
-  /* 
+  }
+  /*
   This method should also be wrapped in a Try, but i couldnt figure out how to use it
   as the filter in a for comprehension. Which probably means im misusing the for comprehension
   or not handling using java libraries in scala properly.

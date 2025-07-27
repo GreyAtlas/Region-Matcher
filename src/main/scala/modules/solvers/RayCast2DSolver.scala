@@ -1,9 +1,9 @@
 package modules.solvers
 
+import types.Latitude
 import types.Line
 import types.Location
 import types.LocationMatchResult
-import types.Longitude
 import types.Point
 import types.Polygon
 import types.Region
@@ -15,6 +15,14 @@ import scala.math
 // Thus it will be inaccurate for edges covering long distances.
 // But handles the discontinuity at the antimeridian as long as the polygon doesn't cover more than
 object RayCast2DSolver extends Solver {
+  private case class State(
+      previousCrossingPoint: Option[Point],
+      accumulatedEdges: Vector[Line]
+  )
+  private case class LongitudeAdjustedPoint(
+      longitude: Float,
+      latitude: Latitude
+  )
   override def matchRegionsToLocations(
       regions: List[Region],
       locations: List[Location]
@@ -31,56 +39,115 @@ object RayCast2DSolver extends Solver {
   override def matchLocationsToRegion(
       locations: List[Location],
       region: Region
-  ): Either[String, LocationMatchResult] =
-    val locationsMatchedToRegion = for {
+  ): Either[String, LocationMatchResult] = {
+    val adjustedPolygons =
+      region.coordinates.map(polygon => adjustPolygon(polygon))
+
+    val result = for {
+      adjustedPolygon <- adjustedPolygons
       location <- locations
-      polygon <- region.coordinates
-      if isPointInPolygon(location.coordinates, polygon)
-    } yield {
-      location.name
+      if isPointInPolygon(location.coordinates, adjustedPolygon)
+    } yield location.name
+
+    Right(LocationMatchResult(region.name, result.toList))
+  }
+
+  private def adjustPolygon(polygon: Polygon): Vector[Line] = {
+    val initialState = State(None, Vector.empty[Line])
+    polygon.vertices
+      .sliding(2, 1)
+      .foldLeft(initialState) {
+        case (state, nextEdge) if (edgeCrossesAntimeridian(nextEdge)) =>
+          constructNewEdgesAtCrossingPoint(state, nextEdge)
+        case (state, nextEdge) =>
+          State(
+            state.previousCrossingPoint,
+            state.accumulatedEdges.appended(Line(nextEdge(0), nextEdge(1)))
+          )
+      }
+      .accumulatedEdges
+  }
+  private def constructNewEdgesAtCrossingPoint(
+      state: State,
+      edge: Vector[Point]
+  ): State = {
+    val startPoint = edge(0)
+    val endPoint = edge(1)
+    val crossingLatitude = interpolateLatitudeAtGivenLongitude(
+      normalizePointAroundAntimeridian(startPoint),
+      normalizePointAroundAntimeridian(endPoint),
+      180
+    )
+    val crossingPointOpt = Point(180.0f, crossingLatitude)
+    val newEdges = {
+      val (x, y) =
+        if (startPoint.longitude.value > endPoint.longitude.value)
+          (startPoint, endPoint)
+        else (endPoint, startPoint)
+
+      crossingPointOpt match {
+        case None => ???
+        case Some(crossingPoint) =>
+          Vector(Line(x, crossingPoint), Line(crossingPoint, y))
+      }
     }
-    Right(LocationMatchResult(region.name, locationsMatchedToRegion))
+
+    state match {
+      case State(None, accumulatedEdges) =>
+        State(
+          Some(crossingPointOpt.get),
+          accumulatedEdges.appendedAll(newEdges)
+        )
+      case State(Some(previousCrossingLatitude), accumulatedEdges) =>
+        State(
+          None,
+          accumulatedEdges
+            .appendedAll(newEdges)
+            .appended(
+              Line(
+                previousCrossingLatitude,
+                crossingPointOpt.get
+              )
+            )
+        )
+    }
+  }
+  private def normalizePointAroundAntimeridian(
+      point: Point
+  ): LongitudeAdjustedPoint = {
+    val newLongitude =
+      if (point.longitude.value < 0)
+        point.longitude.value + 360
+      else point.longitude.value
+    LongitudeAdjustedPoint(newLongitude, point.latitude)
+  }
+
+  private def edgeCrossesAntimeridian(edge: Vector[Point]): Boolean =
+    math.abs(edge(0).longitude.value - edge(1).longitude.value) > 180.0f
+
+  private def interpolateLatitudeAtGivenLongitude(
+      start: LongitudeAdjustedPoint,
+      end: LongitudeAdjustedPoint,
+      interpolationLongitude: Float
+  ): Float =
+    (interpolationLongitude - start.longitude)
+      * (end.latitude.value - start.latitude.value)
+      / (end.longitude - start.longitude)
+      + (start.latitude.value)
 
   // For each Edge checks if it intersects a ray cast from the point in the positive longitude direction
   // and XORs the booleans from each edge check.
-  private def isPointInPolygon(testPoint: Point, polygon: Polygon): Boolean =
-    polygon.vertices
-      .sliding(2, 1)
+  private def isPointInPolygon(
+      testPoint: Point,
+      polygon: Vector[Line]
+  ): Boolean =
+    polygon
       .foldLeft(false)((accumulated, edge) =>
-        val pointsAdjustedForComparison =
-          shiftLongitude(testPoint, edge(0), edge(1))
         accumulated ^ doesEdgeIntersectHorizontalRay(
-          pointsAdjustedForComparison._1,
-          pointsAdjustedForComparison._2
+          testPoint,
+          edge
         )
       )
-
-  // To handle the discontinuity at the dateline I shift to the negative the test point and edge points longitudes
-  private def shiftLongitude(
-      testPoint: Point,
-      edgeStart: Point,
-      edgeEnd: Point
-  ): (Point, Line) =
-    def shiftFunction(
-        pointToShift: Point,
-        minPositiveLongitude: Float
-    ): Point = pointToShift.copy(longitude =
-      Longitude(
-        math.abs(pointToShift.longitude.value - minPositiveLongitude) - 180
-      ).get
-    )
-    val minPositiveLongitude = (Vector[Float](
-      testPoint.longitude.value,
-      edgeStart.longitude.value,
-      edgeEnd.longitude.value
-    ).filter(_ >= 0).minOption).getOrElse(0.0f)
-    (
-      shiftFunction(testPoint, minPositiveLongitude),
-      Line(
-        shiftFunction(edgeStart, minPositiveLongitude),
-        shiftFunction(edgeEnd, minPositiveLongitude)
-      )
-    )
 
   private def doesEdgeIntersectHorizontalRay(
       testPoint: Point,
@@ -105,11 +172,11 @@ object RayCast2DSolver extends Solver {
   private def isIntersectionToTheRightOfPoint(
       testPoint: Point,
       edge: Line
-  ): Boolean =
+  ): Boolean = {
     val longitudeIntersection =
       ((testPoint.latitude.value - edge.start.latitude.value)
         * (edge.end.longitude.value - edge.start.longitude.value)
         / (edge.end.latitude.value - edge.start.latitude.value) + edge.start.longitude.value)
     (testPoint.longitude.value <= longitudeIntersection)
-
+  }
 }
