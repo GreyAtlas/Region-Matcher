@@ -7,7 +7,7 @@ It then finds which locations are contained in which regions if any and provides
 #### Limitations
 There are two solving algorithms available.
  1. A custom implementation of a ray cast algorithm. It assumes 2D geometry, so for large distances it won't be accurate. The current implementation can handle polygons that cross the antimeridian.
- 2. that uses the Spatial4j library, but isn't able to work with a Polygon that encircles a pole. 
+ 2. And one that uses the Spatial4j library. It isn't able to work with a Polygon that encircles a pole. 
 
 The default solver is Spatial4j, but can be changed with an optional CLI argument
 
