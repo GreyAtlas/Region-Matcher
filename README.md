@@ -5,7 +5,11 @@ This application reads two json files, one which contains a list of regions defi
 It then finds which locations are contained in which regions if any and provides the result in a json file.
 
 #### Limitations
-Currently only a simple 2D Ray casting algorithm is implemented. It is not accurate over long distances and breaks with polygons that are too large. 
+There are two solving algorithms available.
+ 1. A custom implementation of a ray cast algorithm. It assumes 2D geometry, so for large distances it won't be accurate. The current implementation can handle polygons that cross the antimeridian.
+ 2. that uses the Spatial4j library, but isn't able to work with a Polygon that encircles a pole. 
+
+The default solver is Spatial4j, but can be changed with an optional CLI argument
 
 Additionally the current implementation is not able to evaluate holes in polygons.
  
@@ -14,11 +18,11 @@ Additionally the current implementation is not able to evaluate holes in polygon
 1. ### SBT
 
     The simplest option is to just run it with sbt 
-    ```sbt "run [[--locations | -l <location-path>]] [[--regions | -r <region-path>]] [[--output | -o <output-path>]]" ```
+    ```sbt "run [[--locations | -l <location-path>]] [[--regions | -r <region-path>]] [[--output | -o <output-path>]] [[--solver | -s  <RayCast2D | Spatial4j>]]"```
    
 3. ### Assembly .Jar
     the sbt-assembly plugin is configured, as such you can run ```sbt assembly``` to create a single .jar file with all dependencies. it can then be either with the java interpreter. 
-    ```java -jar <application-name> [[--locations | -l <location-path>]] [[--regions | -r <region-path>]] [[--output | -o <output-path>]]```
+    ```java -jar <application-name> [[--locations | -l <location-path>]] [[--regions | -r <region-path>]] [[--output | -o <output-path>]] [[--solver | -s  <RayCast2D | Spatial4j>]]```
 
 
 ### File format
