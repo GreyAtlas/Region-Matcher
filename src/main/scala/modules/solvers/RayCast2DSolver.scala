@@ -1,22 +1,27 @@
 package modules.solvers
 
+import cats.syntax.all.*
 import types.Latitude
 import types.Line
 import types.Location
 import types.LocationMatchResult
+import types.Longitude
 import types.Point
 import types.Polygon
 import types.Region
 
 import scala.math
 
-// An implementation of the ray cast point in polygon algorithm
-// Assumes [Longitude, Latitude] coordinates are on a flat 2D grid.
-// Thus it will be inaccurate for edges covering long distances.
-// But handles the discontinuity at the antimeridian as long as the polygon doesn't cover more than
+/* An implementation of the ray cast point in polygon algorithm
+  Assumes [Longitude, Latitude] coordinates are on a flat 2D grid.
+  Thus it SHOULD be inaccurate for edges covering long distances.
+  The antimeridian is handled by creating an extra edge at every crossing
+  which projects the inner part of the crossing
+  onto the positive 180 degree antimeridian.
+ */
 object RayCast2DSolver extends Solver {
-  private case class State(
-      previousCrossingPoint: Option[Point],
+  private case class PolygonConversionState(
+      previousCrossingLatitude: Option[Latitude],
       accumulatedEdges: Vector[Line]
   )
   private case class LongitudeAdjustedPoint(
@@ -27,50 +32,62 @@ object RayCast2DSolver extends Solver {
       regions: List[Region],
       locations: List[Location]
   ): Either[String, List[LocationMatchResult]] =
-    Right(
-      regions.map(region =>
-        matchLocationsToRegion(locations, region) match {
-          case Right(value: LocationMatchResult) => value
-          case Left(value)                       => ???
-        }
-      )
-    )
+    regions.map(region => matchLocationsToRegion(locations, region)).sequence
 
   override def matchLocationsToRegion(
       locations: List[Location],
       region: Region
   ): Either[String, LocationMatchResult] = {
-    val adjustedPolygons =
-      region.coordinates.map(polygon => adjustPolygon(polygon))
+    val adjustedPolygonsEither =
+      region.coordinates.map(polygon => adjustPolygon(polygon)).sequence
 
-    val result = for {
-      adjustedPolygon <- adjustedPolygons
-      location <- locations
-      if isPointInPolygon(location.coordinates, adjustedPolygon)
-    } yield location.name
+    adjustedPolygonsEither match {
+      case Left(error) => Left(error)
+      case Right(adjustedPolygons) => {
+        val matchedLocations = for {
+          adjustedPolygon <- adjustedPolygons
+          location <- locations
+          if isPointInPolygon(location.coordinates, adjustedPolygon)
+        } yield location.name
+        Right(LocationMatchResult(region.name, matchedLocations.toList))
+      }
 
-    Right(LocationMatchResult(region.name, result.toList))
+    }
   }
 
-  private def adjustPolygon(polygon: Polygon): Vector[Line] = {
-    val initialState = State(None, Vector.empty[Line])
+  // this method is responsible for cutting the polygon along the antimeridian.
+  // Unless i messed up somewhere, it should solve correctly. however with how verbose this got
+  // its very likely that i missed a mistake somewhere.
+  private def adjustPolygon(polygon: Polygon): Either[String, Vector[Line]] = {
+    val initialState = Right(PolygonConversionState(None, Vector.empty[Line]))
     polygon.vertices
       .sliding(2, 1)
-      .foldLeft(initialState) {
-        case (state, nextEdge) if (edgeCrossesAntimeridian(nextEdge)) =>
-          constructNewEdgesAtCrossingPoint(state, nextEdge)
-        case (state, nextEdge) =>
-          State(
-            state.previousCrossingPoint,
-            state.accumulatedEdges.appended(Line(nextEdge(0), nextEdge(1)))
+      .foldLeft[Either[String, PolygonConversionState]](initialState) {
+        (stateEither, nextEdge) =>
+          stateEither.flatMap(state =>
+            state match {
+              case state if (edgeCrossesAntimeridian(nextEdge)) =>
+                constructNewEdgesAtCrossingPoint(state, nextEdge)
+              case state =>
+                Right(
+                  PolygonConversionState(
+                    state.previousCrossingLatitude,
+                    state.accumulatedEdges
+                      .appended(Line(nextEdge(0), nextEdge(1)))
+                  )
+                )
+            }
           )
-      }
-      .accumulatedEdges
+
+      } match {
+      case Left(error)  => Left(error)
+      case Right(value) => Right(value.accumulatedEdges)
+    }
   }
   private def constructNewEdgesAtCrossingPoint(
-      state: State,
+      state: PolygonConversionState,
       edge: Vector[Point]
-  ): State = {
+  ): Either[String, PolygonConversionState] = {
     val startPoint = edge(0)
     val endPoint = edge(1)
     val crossingLatitude = interpolateLatitudeAtGivenLongitude(
@@ -78,40 +95,68 @@ object RayCast2DSolver extends Solver {
       normalizePointAroundAntimeridian(endPoint),
       180
     )
-    val crossingPointOpt = Point(180.0f, crossingLatitude)
-    val newEdges = {
-      val (x, y) =
-        if (startPoint.longitude.value > endPoint.longitude.value)
-          (startPoint, endPoint)
-        else (endPoint, startPoint)
+    val crossingLatitudeOpt = Latitude(crossingLatitude)
+    val (positiveLongitudePoint, negativeLongitudePoint) =
+      if (startPoint.longitude.value > 0)
+        (startPoint, endPoint)
+      else (endPoint, startPoint)
 
-      crossingPointOpt match {
-        case None => ???
-        case Some(crossingPoint) =>
-          Vector(Line(x, crossingPoint), Line(crossingPoint, y))
+    (state, crossingLatitudeOpt) match {
+      case (_, None) => Left("Failed to find valid crossing point")
+      case (
+            PolygonConversionState(None, accumulatedEdges),
+            (Some(latitude))
+          ) => {
+        val newEdges = Vector(
+          Line(
+            positiveLongitudePoint,
+            Point(Longitude.getPositiveAntimeridian, latitude)
+          ),
+          Line(
+            negativeLongitudePoint,
+            Point(Longitude.getNegativeAntimeridian, latitude)
+          )
+        )
+        Right(
+          PolygonConversionState(
+            Some(crossingLatitudeOpt.get),
+            accumulatedEdges.appendedAll(newEdges)
+          )
+        )
       }
-    }
+      case (
+            PolygonConversionState(
+              Some(previousCrossingLatitude),
+              accumulatedEdges
+            ),
+            Some(crossingLatitude)
+          ) => {
 
-    state match {
-      case State(None, accumulatedEdges) =>
-        State(
-          Some(crossingPointOpt.get),
-          accumulatedEdges.appendedAll(newEdges)
+        val newEdges = Vector(
+          Line(
+            positiveLongitudePoint,
+            Point(Longitude.getPositiveAntimeridian, crossingLatitude)
+          ),
+          Line(
+            negativeLongitudePoint,
+            Point(Longitude.getNegativeAntimeridian, crossingLatitude)
+          ),
+          Line(
+            Point(Longitude.getPositiveAntimeridian, previousCrossingLatitude),
+            Point(Longitude.getPositiveAntimeridian, crossingLatitude)
+          )
         )
-      case State(Some(previousCrossingLatitude), accumulatedEdges) =>
-        State(
-          None,
-          accumulatedEdges
-            .appendedAll(newEdges)
-            .appended(
-              Line(
-                previousCrossingLatitude,
-                crossingPointOpt.get
-              )
-            )
+        Right(
+          PolygonConversionState(
+            Some(crossingLatitudeOpt.get),
+            accumulatedEdges.appendedAll(newEdges)
+          )
         )
+      }
+
     }
   }
+
   private def normalizePointAroundAntimeridian(
       point: Point
   ): LongitudeAdjustedPoint = {
@@ -143,10 +188,9 @@ object RayCast2DSolver extends Solver {
   ): Boolean =
     polygon
       .foldLeft(false)((accumulated, edge) =>
-        accumulated ^ doesEdgeIntersectHorizontalRay(
-          testPoint,
-          edge
-        )
+        accumulated ^
+          (doesEdgeIntersectHorizontalRay(testPoint, edge)
+            && isIntersectionToTheRightOfPoint(testPoint, edge))
       )
 
   private def doesEdgeIntersectHorizontalRay(
@@ -164,10 +208,7 @@ object RayCast2DSolver extends Solver {
       (testPoint.longitude.value <= math.max(
         edge.start.longitude.value,
         edge.end.longitude.value
-      ))) match {
-      case true       => isIntersectionToTheRightOfPoint(testPoint, edge)
-      case _: Boolean => false;
-    }
+      )))
 
   private def isIntersectionToTheRightOfPoint(
       testPoint: Point,

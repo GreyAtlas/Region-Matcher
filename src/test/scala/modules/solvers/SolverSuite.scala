@@ -378,28 +378,84 @@ trait SolverSuite extends munit.FunSuite {
       case Right(result) => assertEquals(result, expected)
     }
   }
-  test(
-    "When Polygon edges cross Antimeridian and Point is just outside the positive longitude edge"
-  ) {
-    val expected = List[LocationMatchResult](
-      LocationMatchResult("region1", List[String]())
-    )
-    val region = Region(
+  val antimeridianRhombus =
+    Region(
       "region1",
       Vector[Polygon](
         Polygon(
           Vector[Point](
-            Point(Longitude(-179).get, Latitude(1).get),
-            Point(Longitude(-179).get, Latitude(10).get),
-            Point(Longitude(179).get, Latitude(10).get),
-            Point(Longitude(179).get, Latitude(1).get),
-            Point(Longitude(-179).get, Latitude(1).get)
+            Point(Longitude(-170).get, Latitude(10).get),
+            Point(Longitude(170).get, Latitude(-5).get),
+            Point(Longitude(-170).get, Latitude(-20).get),
+            Point(Longitude(-150).get, Latitude(-5).get),
+            Point(Longitude(-170).get, Latitude(10).get)
           )
         ).get
       )
     )
+  test(
+    "When a diamond shaped Polygon edges cross the Antimeridian and the raycast intersects a projected edge"
+  ) {
+    val expected = List[LocationMatchResult](
+      LocationMatchResult("region1", List[String]())
+    )
+    val region = antimeridianRhombus
     val location =
-      Location("location1", Point(Longitude(178).get, Latitude(5).get))
+      Location("location1", Point(Longitude(0).get, Latitude(1).get))
+    val result = solverInstance.matchRegionsToLocations(
+      List[Region](region),
+      List[Location](location)
+    )
+    result match {
+      case Left(error) =>
+        fail("Error occured during solving", clues(error, result))
+      case Right(result) => assertEquals(result, expected)
+    }
+  }
+  test(
+    "When a diamond shaped Polygon edges cross the Antimeridian and Point is outside the negative north edge"
+  ) {
+    val expected = List[LocationMatchResult](
+      LocationMatchResult("region1", List[String]())
+    )
+    val region = antimeridianRhombus
+    val location =
+      Location("location1", Point(Longitude(-159).get, Latitude(5).get))
+    val result = solverInstance.matchRegionsToLocations(
+      List[Region](region),
+      List[Location](location)
+    )
+    result match {
+      case Left(error) =>
+        fail("Error occured during solving", clues(error, result))
+      case Right(result) => assertEquals(result, expected)
+    }
+  }
+  val multiIntersectionAntimeridian =
+    Region(
+      "region1",
+      Vector[Polygon](
+        Polygon(
+          Vector[Point](
+            Point(Longitude(170).get, Latitude(10).get),
+            Point(Longitude(170).get, Latitude(-5).get),
+            Point(Longitude(-150).get, Latitude(-5).get),
+            Point(Longitude(175).get, Latitude(0).get),
+            Point(Longitude(-150).get, Latitude(5).get),
+            Point(Longitude(170).get, Latitude(10).get)
+          )
+        ).get
+      )
+    )
+  test(
+    "When a Polygon edges crosses the Antimeridian multiple times and Point is outside"
+  ) {
+    val expected = List[LocationMatchResult](
+      LocationMatchResult("region1", List[String]())
+    )
+    val region = antimeridianRhombus
+    val location =
+      Location("location1", Point(Longitude(0).get, Latitude(1).get))
     val result = solverInstance.matchRegionsToLocations(
       List[Region](region),
       List[Location](location)
