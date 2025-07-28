@@ -1,4 +1,5 @@
 import cats.data.EitherT
+import cats.data.Validated
 import cats.effect.*
 import cats.syntax.all.*
 import com.monovore.decline.*
@@ -7,10 +8,15 @@ import modules.IO.IOHandler
 import modules.json.CirceJsonParser
 import modules.solvers.RayCast2DSolver
 
-case class MatcherConfig(
+private enum SelectedSolver:
+  case RayCast2D
+  case Spatial4j
+
+private case class MatcherConfig(
     locationsPath: String,
     regionsPath: String,
-    outputPath: String
+    outputPath: String,
+    solver: SelectedSolver
 )
 
 object Main
@@ -41,13 +47,36 @@ object Main
       metavar = "path",
       help = "Set the output.json path"
     )
+  implicit val selectedSolverArgument: Argument[SelectedSolver] =
+    new Argument[SelectedSolver] {
+      def read(string: String) = {
+        string match {
+          case "rayCast2D" | "RayCast2D" =>
+            Validated.valid(SelectedSolver.RayCast2D)
+          case "spatial4j" | "Spatial4j" =>
+            Validated.valid(SelectedSolver.Spatial4j)
+          case _ => Validated.invalidNel(s"Invalid solver: $string")
+        }
+      }
+      def defaultMetavar =
+        s"${SelectedSolver.RayCast2D} | ${SelectedSolver.Spatial4j}"
+    }
+  val selectedSolverOpt = Opts
+    .option[SelectedSolver](
+      "solver",
+      short = "s",
+      help = "Set the solver algorithm, default Spatial4j"
+    )
+    .withDefault(SelectedSolver.Spatial4j)
   val configOpts: Opts[MatcherConfig] =
-    (locationsPathOpt, regionsPathOpt, outputPathOpt).mapN(MatcherConfig.apply)
+    (locationsPathOpt, regionsPathOpt, outputPathOpt, selectedSolverOpt).mapN(
+      MatcherConfig.apply
+    )
 
   override def main: Opts[IO[ExitCode]] =
-    (locationsPathOpt, regionsPathOpt, outputPathOpt)
-      .mapN { (locationsPath, regionsPath, outputPath) =>
-        runApp(MatcherConfig(locationsPath, regionsPath, outputPath)).value
+    configOpts
+      .map { config =>
+        runApp(config).value
           .flatMap({
             case Right(value) => IO.println(value).as(ExitCode.Success)
             case Left(value)  => IO.println(value).as(ExitCode.Error)
@@ -70,10 +99,12 @@ object Main
       regions <- EitherT.fromEither(
         CirceJsonParser.parseRegionJson(regionsFile)
       )
-      solverResult =
-        RayCast2DSolver.matchRegionsToLocations(
-          regions,
-          locations
+      solverResult <-
+        EitherT.fromEither(
+          RayCast2DSolver.matchRegionsToLocations(
+            regions,
+            locations
+          )
         )
       resultJson <- EitherT.fromEither(
         CirceJsonParser.encodeResultsToJson(solverResult)
